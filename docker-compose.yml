@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+###  core services ###
+# Secure Web Application Gateway
+  swag:
+    image: ghcr.io/linuxserver/swag
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Los_Angeles
+      - URL=cywang.top
+      - SUBDOMAINS=wildcard
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+    volumes:
+      - ./services/swag-reverse-proxy:/config
+    ports:
+      - 443:443
+      - 80:80
+    networks:
+      - swag
+    restart: unless-stopped
+### END core services ###
+
+### cron jobs ###
+# Dynamic DNS service to auto-update Cloudflare records on public IP change
+# See: https://hub.docker.com/r/oznu/cloudflare-ddns/
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
+    container_name: cloudflare-ddns
+    network_mode: host
+    restart: always
+    environment:
+      # Add API_KEY to .env file in cron-jobs directory;
+      # File needs to be created and is gitignored.
+      - ZONE=cywang.top
+      - PROXIED=true
+      - RRTYPE=A
+      - DNS_SERVER=1.1.1.1
+    env_file: ./cron-jobs/.env
+### END cron jobs ###
+
+networks:
+  swag:
+    external: true
+
+
